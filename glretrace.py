@@ -236,14 +236,14 @@ static void snapshot(Image::Image &image) {
     glReadBuffer(readbuffer);
 }
 
-static void frame_complete(void) {
+static void frame_complete(unsigned callno) {
     ++__frame;
     
     if (!__reshape_window && (__snapshot_prefix || __compare_prefix)) {
         Image::Image *ref = NULL;
         if (__compare_prefix) {
             char filename[PATH_MAX];
-            snprintf(filename, sizeof filename, "%s%04u.png", __compare_prefix, __frame);
+            snprintf(filename, sizeof filename, "%s%010u.png", __compare_prefix, callno);
             ref = Image::readPNG(filename);
             if (!ref) {
                 return;
@@ -257,14 +257,14 @@ static void frame_complete(void) {
 
         if (__snapshot_prefix) {
             char filename[PATH_MAX];
-            snprintf(filename, sizeof filename, "%s%04u.png", __snapshot_prefix, __frame);
+            snprintf(filename, sizeof filename, "%s%010u.png", __snapshot_prefix, callno);
             if (src.writePNG(filename) && verbosity >= 0) {
                 std::cout << "Wrote " << filename << "\n";
             }
         }
 
         if (ref) {
-            std::cout << "Frame " << __frame << " average precision of " << src.compare(*ref) << " bits\n";
+            std::cout << "Snapshot " << callno << " average precision of " << src.compare(*ref) << " bits\n";
             delete ref;
         }
     }
@@ -286,7 +286,7 @@ static void display(void) {
                     std::cout << *call;
                     std::cout.flush();
                 };
-                frame_complete();
+                frame_complete(call->no);
                 if (double_buffer)
                     glutSwapBuffers();
                 else
@@ -299,7 +299,7 @@ static void display(void) {
 
         if (name == "glFlush") {
             if (!double_buffer) {
-                frame_complete();
+                frame_complete(call->no);
             }
             glFlush();
         }
