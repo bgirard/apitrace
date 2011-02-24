@@ -37,6 +37,12 @@ class GlRetracer(Retracer):
     def retrace_function(self, function):
         Retracer.retrace_function(self, function)
 
+    bind_framebuffer_function_names = set([
+        "glBindFramebuffer",
+        "glBindFramebufferARB",
+        "glBindFramebufferEXT",
+    ])
+
     draw_array_function_names = set([
         "glDrawArrays",
         "glDrawArraysEXT",
@@ -67,6 +73,11 @@ class GlRetracer(Retracer):
         "glMultiModeDrawElementsIBM",
     ])
 
+    misc_draw_function_names = set([
+        "glClear",
+        "glEnd",
+    ])
+
     def call_function(self, function):
         if (function.name in self.draw_array_function_names or 
             function.name in self.draw_elements_function_names):
@@ -92,6 +103,18 @@ class GlRetracer(Retracer):
             print '        __window_height = y + height;'
             print '        __reshape_window = true;'
             print '    }'
+
+        if function.name in self.bind_framebuffer_function_names:
+            print '    GLint __new_fb = 0;'
+            print '    glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &__new_fb);'
+            print '    if (__new_fb != __fb)'
+            print '        snapshot(call.no);'
+            print '    __fb = __new_fb;'
+
+        if (function.name in self.draw_array_function_names or 
+            function.name in self.draw_elements_function_names or
+            function.name in self.misc_draw_function_names):
+            print '    __unsaved_draws++;'
 
         if function.name == "glEnd":
             print '    insideGlBeginEnd = false;'
@@ -151,8 +174,11 @@ if __name__ == '__main__':
 #include <stdio.h>
 #include <iostream>
 
+#include "image.hpp"
 #include "glproc.hpp"
 #include <GL/glut.h>
+
+int verbosity = 0;
 
 static bool double_buffer = false;
 static bool insideGlBeginEnd = false;
@@ -160,7 +186,10 @@ static bool insideGlBeginEnd = false;
 static int __window_width = 256, __window_height = 256;
 bool __reshape_window = false;
 
+GLint __fb = 0;
+
 unsigned __frame = 0;
+unsigned __unsaved_draws = 0;
 long long __startTime = 0;
 bool __wait = false;
 
@@ -212,6 +241,53 @@ checkGlError(void) {
     }
     std::cerr << "\n";
 }
+
+static void color_snapshot(Image::Image &image) {
+    GLint drawbuffer = double_buffer ? GL_BACK : GL_FRONT;
+    GLint readbuffer = double_buffer ? GL_BACK : GL_FRONT;
+    glGetIntegerv(GL_READ_BUFFER, &drawbuffer);
+    glGetIntegerv(GL_READ_BUFFER, &readbuffer);
+    glReadBuffer(drawbuffer);
+    glReadPixels(0, 0, image.width, image.height, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels);
+    checkGlError();
+    glReadBuffer(readbuffer);
+}
+
+static void snapshot(unsigned callno) {
+    Image::Image *ref = NULL;
+
+    if (!__unsaved_draws || (!__compare_prefix && !__snapshot_prefix))
+        return;
+
+    if (__compare_prefix) {
+        char filename[PATH_MAX];
+        snprintf(filename, sizeof filename, "%s%010u.png", __compare_prefix, callno);
+        ref = Image::readPNG(filename);
+        if (!ref) {
+            return;
+        }
+        if (verbosity >= 0)
+            std::cout << "Read " << filename << "\n";
+    }
+
+    Image::Image src(__window_width, __window_height, true);
+    color_snapshot(src);
+
+    if (__snapshot_prefix) {
+        char filename[PATH_MAX];
+        snprintf(filename, sizeof filename, "%s%010u.png", __snapshot_prefix, callno);
+        if (src.writePNG(filename) && verbosity >= 0) {
+            std::cout << "Wrote " << filename << "\n";
+        }
+    }
+
+    if (ref) {
+        std::cout << "Snapshot " << callno << " average precision of " << src.compare(*ref) << " bits\n";
+        delete ref;
+    }
+
+    __unsaved_draws = 0;
+}
 '''
     api = glapi.glapi
     retracer = GlRetracer()
@@ -223,52 +299,11 @@ static Trace::Parser parser;
 static void display_noop(void) {
 }
 
-#include "image.hpp"
-
-static void snapshot(Image::Image &image) {
-    GLint drawbuffer = double_buffer ? GL_BACK : GL_FRONT;
-    GLint readbuffer = double_buffer ? GL_BACK : GL_FRONT;
-    glGetIntegerv(GL_READ_BUFFER, &drawbuffer);
-    glGetIntegerv(GL_READ_BUFFER, &readbuffer);
-    glReadBuffer(drawbuffer);
-    glReadPixels(0, 0, image.width, image.height, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels);
-    checkGlError();
-    glReadBuffer(readbuffer);
-}
-
 static void frame_complete(unsigned callno) {
     ++__frame;
     
-    if (!__reshape_window && (__snapshot_prefix || __compare_prefix)) {
-        Image::Image *ref = NULL;
-        if (__compare_prefix) {
-            char filename[PATH_MAX];
-            snprintf(filename, sizeof filename, "%s%010u.png", __compare_prefix, callno);
-            ref = Image::readPNG(filename);
-            if (!ref) {
-                return;
-            }
-            if (verbosity >= 0)
-                std::cout << "Read " << filename << "\n";
-        }
-        
-        Image::Image src(__window_width, __window_height, true);
-        snapshot(src);
-
-        if (__snapshot_prefix) {
-            char filename[PATH_MAX];
-            snprintf(filename, sizeof filename, "%s%010u.png", __snapshot_prefix, callno);
-            if (src.writePNG(filename) && verbosity >= 0) {
-                std::cout << "Wrote " << filename << "\n";
-            }
-        }
-
-        if (ref) {
-            std::cout << "Snapshot " << callno << " average precision of " << src.compare(*ref) << " bits\n";
-            delete ref;
-        }
-    }
-
+    if (!__reshape_window)
+        snapshot(callno);
 }
 
 static void display(void) {
@@ -300,6 +335,8 @@ static void display(void) {
         if (name == "glFlush") {
             if (!double_buffer) {
                 frame_complete(call->no);
+            } else if (__fb != 0) {
+                snapshot(call->no);
             }
             glFlush();
         }
