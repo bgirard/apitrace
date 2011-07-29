@@ -270,7 +270,7 @@ int main(int argc, char **argv)
             return 1;
         }
     }
-
+/*
     ws = glws::createNativeWindowSystem();
     visual = ws->createVisual(double_buffer);
     drawable = ws->createDrawable(visual);
@@ -285,7 +285,7 @@ int main(int argc, char **argv)
             parser.close();
         }
     }
-
+*/
     return 0;
 }
 

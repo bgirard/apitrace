@@ -14,7 +14,7 @@ SET(CMAKE_C_FLAGS "$CFLAGS -I$SYSROOT/usr/include -D__linux__ -mandroid -msoft-f
 
 SET(OPENGL_INCLUDE_DIR "/home/benoitgirard/mozilla/tools/android/ndk/android-ndk-r4c/build/platforms/android-8/arch-x86/usr/include/GLES")
 SET(OPENGL_gl_LIBRARY "/home/benoitgirard/mozilla/tools/android/ndk/android-ndk-r4c/build/platforms/android-8/arch-arm/usr/lib/libGLESv2.so")
-SET(OPENGL_glu_LIBRARY "/home/benoitgirard/mozilla/tools/android/ndk/android-ndk-r4c/build/platforms/android-8/arch-arm/usr/lib/libGLESv2.so")
+SET(OPENGL_glu_LIBRARY "/home/benoitgirard/libEGL.so")
 
 project (apitrace)
 
@@ -220,7 +220,7 @@ if (WIN32)
     set (glws glws_wgl.cpp)
 else (WIN32)
     set (os os_posix.cpp)
-    set (glws glws_glx.cpp)
+    # set (glws glws_glx.cpp)
 endif (WIN32)
 
 add_library (trace trace_model.cpp trace_parser.cpp ${os})

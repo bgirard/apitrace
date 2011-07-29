@@ -34,6 +34,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include <dlfcn.h>
+
 #ifdef WIN32
 #ifndef snprintf
 #define snprintf _snprintf
