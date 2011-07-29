@@ -1,5 +1,21 @@
 cmake_minimum_required (VERSION 2.8)
 
+INCLUDE(CMakeForceCompiler)
+
+# this one is important
+SET(CMAKE_SYSTEM_NAME Generic)
+SET(CMAKE_FIND_ROOT_PATH /home/benoitgirard/mozilla/tools/android/ndk/android-ndk-r4c/build/platforms/android-5/arch-arm)
+# search for programs in the build host directories
+SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+# for libraries and headers in the target directories
+SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+SET(CMAKE_C_FLAGS "$CFLAGS -I$SYSROOT/usr/include -D__linux__ -mandroid -msoft-float -fno-short-enums -march=armv5te -mthumb-interwork -fno-strict-aliasing -march=armv7-a -mthumb -Wa, -march=armv7-a -Wa, -mthumb -mfpu=neon")
+
+SET(OPENGL_INCLUDE_DIR "/home/benoitgirard/mozilla/tools/android/ndk/android-ndk-r4c/build/platforms/android-8/arch-x86/usr/include/GLES")
+SET(OPENGL_gl_LIBRARY "/home/benoitgirard/mozilla/tools/android/ndk/android-ndk-r4c/build/platforms/android-8/arch-arm/usr/lib/libGLESv2.so")
+SET(OPENGL_glu_LIBRARY "/home/benoitgirard/mozilla/tools/android/ndk/android-ndk-r4c/build/platforms/android-8/arch-arm/usr/lib/libGLESv2.so")
+
 project (apitrace)
 
 set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)

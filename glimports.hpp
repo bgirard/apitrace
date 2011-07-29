@@ -40,13 +40,13 @@
 
 #else /* !WIN32 */
 
-#include <X11/Xlib.h>
+//#include <X11/Xlib.h>
 
 #endif /* !WIN32 */
 
-#include <GL/gl.h>
+#include <GLES/gl.h>
 
-#include <GL/glext.h>
+#include <GLES/glext.h>
 
 #ifndef GL_TEXTURE_INDEX_SIZE_EXT
 #define GL_TEXTURE_INDEX_SIZE_EXT         0x80ED
@@ -80,7 +80,7 @@ typedef struct _WGLSWAP
 
 #else /* !WIN32 */
 
-#include <GL/glx.h>
+//#include <GL/glx.h>
 #include <GL/glext.h>
 
 /* Prevent collision with Trace::Bool */
