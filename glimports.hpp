@@ -44,6 +44,7 @@
 
 #endif /* !WIN32 */
 
+#include <GL/glx.h>
 #include <GLES/gl.h>
 
 #include <GLES/glext.h>
